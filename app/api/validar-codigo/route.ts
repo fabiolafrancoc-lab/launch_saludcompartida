@@ -18,6 +18,32 @@ function getSupabaseAlt() {
 }
 
 /**
+ * GET /api/validar-codigo
+ *
+ * Lightweight status check — confirms the endpoint is reachable and
+ * reports whether each Supabase database source is configured.
+ *
+ * Returns { enabled: true, sources: { main: boolean, alt: boolean } }
+ */
+export async function GET() {
+  // Only service role keys have the permissions needed to read the registrations
+  // and shopify_orders tables. The public anon key is insufficient.
+  const mainConfigured = !!(
+    (process.env.SUPABASE_URL_MAIN ?? process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY_MAIN
+  )
+  const altConfigured = !!(process.env.SUPABASE_URL_ALT && process.env.SUPABASE_SERVICE_ROLE_KEY_ALT)
+
+  return NextResponse.json({
+    enabled: mainConfigured || altConfigured,
+    sources: {
+      main: mainConfigured,
+      alt: altConfigured,
+    },
+  })
+}
+
+/**
  * POST /api/validar-codigo
  *
  * Validates a 6-character access code.
