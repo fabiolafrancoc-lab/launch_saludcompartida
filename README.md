@@ -19,6 +19,43 @@ Aplicación Next.js que sirve la landing page de SaludCompartida y las APIs nece
 
 ---
 
+## ¿No funciona nada? Diagnóstico rápido
+
+### Paso 1 — Verificar configuración en Vercel
+
+Después de hacer el deploy, abre esta URL en el navegador:
+
+```
+https://www.saludcompartida.app/api/health
+```
+
+El endpoint responde en JSON e indica exactamente qué variables están faltando:
+
+```json
+{
+  "status": "missing_env_vars",
+  "missing_required": ["supabase_main", "shopify_webhook", "resend_email"],
+  "instructions": "Agregar las variables faltantes en: Vercel → proyecto → Settings → Environment Variables → y luego hacer Redeploy."
+}
+```
+
+Si el `status` es `"ok"`, todas las variables requeridas están presentes y la app debería funcionar.
+
+### Paso 2 — Agregar las variables en Vercel
+
+1. Ir a [vercel.com](https://vercel.com) → seleccionar el proyecto `launch_saludcompartida`
+2. Click en **Settings** → **Environment Variables**
+3. Agregar cada variable listada abajo (ver detalles en `.env.example`)
+4. Hacer **Redeploy** (Deployments → botón "..." → Redeploy)
+
+### Paso 3 — Verificar de nuevo
+
+Volver a abrir `https://www.saludcompartida.app/api/health` — debe mostrar `"status": "ok"`.
+
+> **Nota:** Vercel **no** necesita instalar ningún paquete adicional. Solo necesita las variables de entorno. El `npm install` se ejecuta automáticamente en cada deploy y ya incluye todo lo necesario (`@supabase/supabase-js`, `next`, `react`).
+
+---
+
 ## Por qué este repositorio existe
 
 Vercel sugirió crear un repositorio limpio (`launch_saludcompartida`) porque el repositorio anterior (`MVP-SaludCompartida`) tenía muchas referencias a archivos inexistentes, variables sin conectar y código de pruebas mezclado con producción. **Este repositorio ES la app de producción.**
