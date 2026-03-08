@@ -184,7 +184,16 @@ async function handleRegistroSubmit(e) {
           email:       migrant.email,      // ← explícito del formulario
           phone:       migrant.phone,
           countryCode: 'US',
-          deliveryAddressPreferences: [],
+          // Pasar nombre y apellido del migrante para que queden en la dirección
+          // del checkout, incluso si hay una sesión Shopify activa.
+          deliveryAddressPreferences: [{
+            deliveryAddress: {
+              firstName:   migrant.first_name,
+              lastName:    migrant.last_name,
+              phone:       migrant.phone,
+              countryCode: 'US',
+            },
+          }],
         },
         note: `Migrante: ${migrant.first_name} ${migrant.last_name} | ` +
               `Email: ${migrant.email} | ` +
@@ -209,8 +218,12 @@ async function handleRegistroSubmit(e) {
       throw new Error(errMsg);
     }
 
-    // ── PASO 3: Redirigir al checkout de Shopify ─────────────────────────────
-    window.location.href = checkoutUrl;
+    // ── PASO 3: Cerrar sesión Shopify y redirigir al checkout ────────────────
+    // Si el usuario está loggeado en la tienda Shopify (p.ej. el admin),
+    // Shopify asociaría el pedido a ESA cuenta en lugar de al migrante.
+    // Redirigir vía /account/logout garantiza que el checkout se procese
+    // como invitado usando el email del formulario (buyerIdentity.email).
+    window.location.href = '/account/logout?return_url=' + encodeURIComponent(checkoutUrl);
 
   } catch (err) {
     console.error('Checkout error:', err);
