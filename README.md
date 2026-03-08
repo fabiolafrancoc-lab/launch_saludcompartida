@@ -38,19 +38,24 @@ AHORA (correcto):
    ↓
 3. Formulario crea carrito vía Storefront API con:
    → buyerIdentity.email = email del formulario (EXPLÍCITO, no de sesión)
-   → buyerIdentity.phone, firstName, lastName del formulario
+   → buyerIdentity.deliveryAddressPreferences con firstName, lastName, phone del migrante
    → cart attribute: registration_id = registrationId del paso 2
    ↓
-4. Usuario completa pago en Shopify Checkout
+4. Formulario redirige a /account/logout?return_url=<checkoutUrl>
+   → Shopify cierra la sesión activa (si hay alguna)
+   → Continúa al checkout como INVITADO con el email del migrante
+   → Evita que una cuenta admin loggeada sobreescriba los datos del migrante
    ↓
-5. Shopify llama POST https://www.saludcompartida.app/api/webhooks/shopify
+5. Usuario completa pago en Shopify Checkout
+   ↓
+6. Shopify llama POST https://www.saludcompartida.app/api/webhooks/shopify
    → Verifica firma HMAC
    → Lee registration_id del atributo del carrito
    → Busca el registro en Supabase por ID (SIEMPRE encuentra el correcto)
    → Actualiza status='active'
    → Envía email con los códigos a migrante Y familiar
    ↓
-6. Usuario entra a www.saludcompartida.app
+7. Usuario entra a www.saludcompartida.app
    → Ingresa su código de 6 caracteres
    → /api/validar-codigo lo verifica en Supabase
    → Redirige a /dashboard con sus beneficios
@@ -182,7 +187,16 @@ async function handleRegistroSubmit(e) {
           email:       migrant.email,      // ← explícito del formulario
           phone:       migrant.phone,
           countryCode: 'US',
-          deliveryAddressPreferences: [],
+          // Pasar nombre y apellido del migrante para que queden en la dirección
+          // del checkout, incluso si hay una sesión Shopify activa.
+          deliveryAddressPreferences: [{
+            deliveryAddress: {
+              firstName:   migrant.first_name,
+              lastName:    migrant.last_name,
+              phone:       migrant.phone,
+              countryCode: 'US',
+            },
+          }],
         },
         note: `Migrante: ${migrant.first_name} ${migrant.last_name} | ` +
               `Email: ${migrant.email} | ` +
@@ -207,8 +221,12 @@ async function handleRegistroSubmit(e) {
       throw new Error(errMsg);
     }
 
-    // ── PASO 3: Redirigir al checkout de Shopify ─────────────────────────────
-    window.location.href = checkoutUrl;
+    // ── PASO 3: Cerrar sesión Shopify y redirigir al checkout ────────────────
+    // Si el usuario está loggeado en la tienda Shopify (p.ej. el admin),
+    // Shopify asociaría el pedido a ESA cuenta en lugar de al migrante.
+    // Redirigir vía /account/logout garantiza que el checkout se procese
+    // como invitado usando el email del formulario (buyerIdentity.email).
+    window.location.href = '/account/logout?return_url=' + encodeURIComponent(checkoutUrl);
 
   } catch (err) {
     console.error('Checkout error:', err);
