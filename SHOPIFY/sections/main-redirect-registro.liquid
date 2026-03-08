@@ -1,0 +1,241 @@
+{% comment %}
+  Sección: Formulario de Registro — SaludCompartida
+  Ruta en el tema Shopify: sections/main-redirect-registro.liquid
+
+  Flujo:
+    1. Usuario llena el formulario
+    2. handleRegistroSubmit llama POST /api/registro (crea registro en Supabase + genera códigos)
+    3. Crea carrito vía Storefront API con buyerIdentity explícito (email del formulario)
+    4. Redirige al checkout de Shopify
+
+  Configuración requerida en el tema:
+    - settings.shopify_storefront_token  → Storefront API Access Token
+    - settings.shopify_variant_basico    → Variant ID del plan (default: 42695875788877)
+    - settings.shopify_selling_plan_basico → Selling Plan ID (default: 7685865549)
+  Agregar estas entradas en config/settings_schema.json (ver SHOPIFY/config/settings_schema_entries.json)
+{% endcomment %}
+
+<section id="sc-registro" class="sc-registro-section">
+  <div class="sc-registro-container">
+
+    <div class="sc-registro-header">
+      <h1 class="sc-titulo">Registra tu suscripción</h1>
+      <p class="sc-subtitulo">Llena el formulario para continuar al pago</p>
+    </div>
+
+    <form id="form-registro" class="sc-form" onsubmit="handleRegistroSubmit(event)">
+
+      <fieldset class="sc-fieldset">
+        <legend class="sc-legend">Tus datos (migrante en EE.UU.)</legend>
+
+        <div class="sc-field-group">
+          <label for="nombre" class="sc-label">Nombre *</label>
+          <input id="nombre" name="nombre" type="text" required class="sc-input" placeholder="Tu nombre">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="apellido_paterno" class="sc-label">Apellido *</label>
+          <input id="apellido_paterno" name="apellido_paterno" type="text" required class="sc-input" placeholder="Tu apellido">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="email" class="sc-label">Email *</label>
+          <input id="email" name="email" type="email" required class="sc-input" placeholder="tu@email.com">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="telefono" class="sc-label">Teléfono</label>
+          <input id="telefono" name="telefono" type="tel" class="sc-input" placeholder="+1 555 000 0000">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="fecha_nacimiento" class="sc-label">Fecha de nacimiento</label>
+          <input id="fecha_nacimiento" name="fecha_nacimiento" type="date" class="sc-input">
+        </div>
+
+        <input type="hidden" name="plan" value="basico">
+      </fieldset>
+
+      <fieldset class="sc-fieldset">
+        <legend class="sc-legend">Datos de tu familiar en México</legend>
+
+        <div class="sc-field-group">
+          <label for="ben1_nombre" class="sc-label">Nombre del familiar *</label>
+          <input id="ben1_nombre" name="ben1_nombre" type="text" required class="sc-input" placeholder="Nombre">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="ben1_apellido" class="sc-label">Apellido del familiar *</label>
+          <input id="ben1_apellido" name="ben1_apellido" type="text" required class="sc-input" placeholder="Apellido">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="ben1_email" class="sc-label">Email del familiar *</label>
+          <input id="ben1_email" name="ben1_email" type="email" required class="sc-input" placeholder="familiar@email.com">
+        </div>
+
+        <div class="sc-field-group">
+          <label for="ben1_telefono" class="sc-label">Teléfono del familiar</label>
+          <input id="ben1_telefono" name="ben1_telefono" type="tel" class="sc-input" placeholder="+52 55 0000 0000">
+        </div>
+      </fieldset>
+
+      <button type="submit" class="sc-btn-submit">
+        Continuar al pago — Primer mes GRATIS
+      </button>
+
+    </form>
+
+  </div>
+</section>
+
+<script>
+// ─── Reemplazar la función handleRegistroSubmit completa ───────────────────
+async function handleRegistroSubmit(e) {
+  e.preventDefault();
+  const form = document.getElementById('form-registro');
+  const fd   = new FormData(form);
+
+  // Datos del migrante (del formulario — NO de la sesión Shopify)
+  const migrant = {
+    first_name: (fd.get('nombre') || '').trim(),
+    last_name:  (fd.get('apellido_paterno') || '').trim(),
+    email:      (fd.get('email') || '').trim(),
+    phone:      (fd.get('telefono') || '').trim(),
+    birthdate:  fd.get('fecha_nacimiento'),
+    plan:       fd.get('plan') || 'basico',
+  };
+
+  // Datos de la familia (primer beneficiario)
+  const family = {
+    first_name: (fd.get('ben1_nombre') || '').trim(),
+    last_name:  (fd.get('ben1_apellido') || '').trim(),
+    email:      (fd.get('ben1_email') || '').trim(),
+    phone:      (fd.get('ben1_telefono') || '').trim(),
+  };
+
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Procesando...'; }
+
+  try {
+    // ── PASO 1: Crear registro en Supabase y obtener los códigos ────────────
+    const regRes = await fetch('https://www.saludcompartida.app/api/registro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        migrant_first_name: migrant.first_name,
+        migrant_last_name:  migrant.last_name,
+        migrant_email:      migrant.email,
+        migrant_phone:      migrant.phone,
+        family_first_name:  family.first_name,
+        family_last_name:   family.last_name,
+        family_email:       family.email,
+        family_phone:       family.phone,
+        plan_type:          migrant.plan,
+      }),
+    });
+    const regData = await regRes.json();
+    if (!regData.success) throw new Error(regData.error || 'Error al crear registro');
+
+    const registrationId = regData.registrationId;
+
+    // ── PASO 2: Crear carrito con Storefront API ─────────────────────────────
+    // buyerIdentity asegura que el email del FORMULARIO se use en el checkout,
+    // independientemente de si hay una sesión Shopify activa.
+    //
+    // Nota de seguridad: el Storefront API access token es un token PÚBLICO
+    // diseñado por Shopify para uso en el frontend (solo lectura de catálogo
+    // y creación de carritos). No confundir con la Admin API key.
+    const storefrontToken = '{{ settings.shopify_storefront_token }}';
+    const variantId   = '{{ settings.shopify_variant_basico }}';
+    const sellingPlanId = '{{ settings.shopify_selling_plan_basico }}';
+    // ↑ Configurar en: Shopify Admin → Online Store → Themes → Customize → Theme settings
+    //   Variant ID: Shopify Admin → Catálogo → Productos → [Plan Básico] → editar variante → URL
+    //   Selling Plan ID: Shopify Admin → Aplicaciones → Subscriptions → tu plan
+
+    if (!storefrontToken || !variantId || !sellingPlanId) {
+      throw new Error('El formulario no está configurado correctamente. Contacta al administrador.');
+    }
+
+    const variantGid     = `gid://shopify/ProductVariant/${variantId}`;
+    const sellingPlanGid = `gid://shopify/SellingPlan/${sellingPlanId}`;
+
+    const cartMutation = `
+      mutation cartCreate($input: CartInput!) {
+        cartCreate(input: $input) {
+          cart { id checkoutUrl }
+          userErrors { field message }
+        }
+      }
+    `;
+    const cartVariables = {
+      input: {
+        lines: [{
+          merchandiseId: variantGid,
+          quantity: 1,
+          sellingPlanId: sellingPlanGid,
+          attributes: [
+            { key: 'registration_id',  value: registrationId },
+            { key: 'Nombre migrante',  value: migrant.first_name + ' ' + migrant.last_name },
+            { key: 'Email migrante',   value: migrant.email },
+          ],
+        }],
+        buyerIdentity: {
+          email:       migrant.email,      // ← explícito del formulario
+          phone:       migrant.phone,
+          countryCode: 'US',
+          deliveryAddressPreferences: [],
+        },
+        note: `Migrante: ${migrant.first_name} ${migrant.last_name} | ` +
+              `Email: ${migrant.email} | ` +
+              `Familia: ${family.first_name} ${family.last_name} | ` +
+              `Plan: ${migrant.plan} | ` +
+              `registration_id: ${registrationId}`,
+      },
+    };
+
+    const cartRes = await fetch('/api/2024-10/graphql.json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Storefront-Access-Token': storefrontToken,
+      },
+      body: JSON.stringify({ query: cartMutation, variables: cartVariables }),
+    });
+    const cartData = await cartRes.json();
+    const checkoutUrl = cartData?.data?.cartCreate?.cart?.checkoutUrl;
+    if (!checkoutUrl) {
+      const errMsg = cartData?.data?.cartCreate?.userErrors?.[0]?.message || 'Error al preparar el carrito';
+      throw new Error(errMsg);
+    }
+
+    // ── PASO 3: Redirigir al checkout de Shopify ─────────────────────────────
+    window.location.href = checkoutUrl;
+
+  } catch (err) {
+    console.error('Checkout error:', err);
+    const msg = err instanceof Error ? err.message : 'Ocurrió un error. Por favor intenta de nuevo.';
+    let errEl = document.getElementById('sc-checkout-error');
+    if (!errEl) {
+      errEl = document.createElement('p');
+      errEl.id = 'sc-checkout-error';
+      errEl.style.cssText = 'color:#f87171;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:8px;padding:12px 16px;margin-top:12px;font-size:14px;';
+      form.appendChild(errEl);
+    }
+    errEl.textContent = msg;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Continuar al pago — Primer mes GRATIS'; }
+  }
+}
+</script>
+
+{% schema %}
+{
+  "name": "Formulario de Registro",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Formulario de Registro"
+    }
+  ]
+}
+{% endschema %}

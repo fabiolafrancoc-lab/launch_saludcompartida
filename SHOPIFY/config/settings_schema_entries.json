@@ -1,0 +1,20 @@
+[
+  {
+    "type": "text",
+    "id": "shopify_storefront_token",
+    "label": "Storefront API Access Token",
+    "info": "Token público para crear carritos. Encontrar en: Shopify Admin → Apps → Develop apps → tu app → API credentials → Storefront API access token"
+  },
+  {
+    "type": "text",
+    "id": "shopify_variant_basico",
+    "label": "Variant ID — Plan Básico (solo el número)",
+    "info": "Encontrar en: Shopify Admin → Catálogo → Productos → [Plan Básico] → editar variante → el número al final de la URL. Ejemplo: 42695875788877"
+  },
+  {
+    "type": "text",
+    "id": "shopify_selling_plan_basico",
+    "label": "Selling Plan ID — Plan Básico (solo el número)",
+    "info": "Encontrar en: Shopify Admin → Aplicaciones → Subscriptions → tu plan de suscripción. Ejemplo: 7685865549"
+  }
+]
