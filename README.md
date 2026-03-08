@@ -29,17 +29,30 @@ Después de hacer el deploy, abre esta URL en el navegador:
 https://www.saludcompartida.app/api/health
 ```
 
-El endpoint responde en JSON e indica exactamente qué variables están faltando:
+El endpoint responde en JSON e indica exactamente qué variables están faltando **y si la conexión a Supabase funciona realmente**:
 
 ```json
 {
   "status": "missing_env_vars",
   "missing_required": ["supabase_main", "shopify_webhook", "resend_email"],
+  "supabase_connected": null,
   "instructions": "Agregar las variables faltantes en: Vercel → proyecto → Settings → Environment Variables → y luego hacer Redeploy."
 }
 ```
 
-Si el `status` es `"ok"`, todas las variables requeridas están presentes y la app debería funcionar.
+Si las variables están configuradas pero la BD falla, verás:
+
+```json
+{
+  "status": "supabase_connection_failed",
+  "missing_required": [],
+  "supabase_connected": false,
+  "supabase_error": "...",
+  "instructions": "Verificar que SUPABASE_URL_MAIN y SUPABASE_SERVICE_ROLE_KEY_MAIN sean correctas en Vercel..."
+}
+```
+
+Si el `status` es `"ok"` y `supabase_connected` es `true`, las variables están configuradas **y la conexión a la base de datos funciona**.
 
 ### Paso 2 — Agregar las variables en Vercel
 
