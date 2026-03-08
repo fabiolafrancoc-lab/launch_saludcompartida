@@ -4,6 +4,22 @@ Repositorio de despliegue para [www.saludcompartida.app](https://www.saludcompar
 
 ---
 
+## Estado de conexión con Vercel
+
+| Qué | Estado |
+|---|---|
+| Proyecto Vercel creado (`launch_saludcompartida`) | ✅ Sí |
+| Repositorio GitHub conectado al proyecto Vercel | ✅ Sí |
+| Dominio `www.saludcompartida.app` asignado | ✅ Sí |
+| Rama `main` con código desplegable | ⚠️ Pendiente (solo tiene LICENSE por ahora) |
+| **Esta PR mergeada a `main`** | ⏳ Pendiente |
+
+> **¿Está conectado Vercel?**  
+> Sí — el proyecto Vercel **sí está conectado** a este repositorio de GitHub.  
+> Vercel desplegará automáticamente en cuanto esta Pull Request sea mergeada a `main`.
+
+---
+
 ## ¿Por qué hay dos nombres distintos?
 
 Es una pregunta muy natural. Aquí está la explicación:
@@ -80,14 +96,18 @@ launch_saludcompartida/        ← raíz de este repositorio
 
 Para que la aplicación funcione en producción, configura estas variables en el panel de Vercel → **Settings → Environment Variables**:
 
-| Variable | Descripción |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL de tu proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública (anon) de Supabase |
-| `SUPABASE_URL_MAIN` | URL principal de Supabase (server-side) |
-| `SUPABASE_SERVICE_ROLE_KEY_MAIN` | Service role key principal |
-| `SUPABASE_URL_ALT` | URL alternativa de Supabase (fallback) |
-| `SUPABASE_SERVICE_ROLE_KEY_ALT` | Service role key alternativa |
+| Variable | Proyecto Supabase | Descripción |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `mvp-saludcompartida` | URL pública (client-side) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `mvp-saludcompartida` | Clave pública anon (client-side) |
+| `SUPABASE_URL_MAIN` | **`mvp-saludcompartida`** | URL principal (server-side) — proyecto MAIN |
+| `SUPABASE_SERVICE_ROLE_KEY_MAIN` | **`mvp-saludcompartida`** | Service role key — proyecto MAIN |
+| `SUPABASE_URL_ALT` | **`launch-saludcompartida`** | URL alternativa / fallback — proyecto ALT |
+| `SUPABASE_SERVICE_ROLE_KEY_ALT` | **`launch-saludcompartida`** | Service role key — proyecto ALT |
+
+> **Regla de nomenclatura:**  
+> - Sufijo `_MAIN` → proyecto Supabase **`mvp-saludcompartida`** (primario)  
+> - Sufijo `_ALT` → proyecto Supabase **`launch-saludcompartida`** (alternativo / fallback)
 
 ---
 
