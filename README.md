@@ -4,6 +4,21 @@ Aplicación Next.js que sirve la landing page de SaludCompartida y las APIs nece
 
 ---
 
+## Checklist de despliegue
+
+| # | Acción | Dónde | Estado |
+|---|---|---|---|
+| 1 | Mergear este PR a `main` | GitHub → Pull requests | ⬜ Pendiente |
+| 2 | Agregar las variables del `.env.example` | Vercel → Settings → Environment Variables | ⬜ Pendiente |
+| 3 | Crear webhook `orders/paid` apuntando a `https://www.saludcompartida.app/api/webhooks/shopify` y copiar el Signing Secret como `SHOPIFY_WEBHOOK_SECRET` | Shopify Admin → Configuración → Notificaciones → Webhooks | ⬜ Pendiente |
+| 4 | Subir `SHOPIFY/sections/main-redirect-registro.liquid` al tema | Shopify Admin → Online Store → Themes → Edit code → sections/ | ⬜ Pendiente |
+| 5 | Agregar entradas de `SHOPIFY/config/settings_schema_entries.json` al `config/settings_schema.json` del tema | Shopify Admin → Online Store → Themes → Edit code → config/ | ⬜ Pendiente |
+| 6 | Configurar los IDs del tema (Storefront Token, Variant ID, Selling Plan ID) | Shopify Admin → Online Store → Themes → Customize → Theme settings | ⬜ Pendiente |
+
+> Los pasos 1-3 son los bloqueantes principales. Los pasos 4-6 son cambios en el **tema Shopify** (no en Vercel).
+
+---
+
 ## Por qué este repositorio existe
 
 Vercel sugirió crear un repositorio limpio (`launch_saludcompartida`) porque el repositorio anterior (`MVP-SaludCompartida`) tenía muchas referencias a archivos inexistentes, variables sin conectar y código de pruebas mezclado con producción. **Este repositorio ES la app de producción.**
@@ -92,148 +107,59 @@ Ir a: **Vercel → proyecto `launch_saludcompartida` → Settings → Environmen
 
 ---
 
-## Actualización requerida en el formulario de Shopify
+## Formulario de Shopify (`SHOPIFY/sections/main-redirect-registro.liquid`)
 
-El formulario en `SHOPIFY/sections/main-redirect-registro.liquid` debe reemplazar el bloque `handleRegistroSubmit` con el siguiente código. El cambio clave es:
-1. Llamar primero a `/api/registro` para crear el registro en Supabase
-2. Luego crear el carrito con Storefront API pasando `buyerIdentity` con los datos del formulario
+> ✅ **Ya aplicado** — El archivo `SHOPIFY/sections/main-redirect-registro.liquid` ya contiene la implementación actualizada. Subir este archivo al tema Shopify en: **Online Store → Themes → Edit code → sections/**.
+
+El flujo implementado:
+1. Llamar primero a `/api/registro` para crear el registro en Supabase (obtiene `registrationId`)
+2. Crear el carrito con Storefront API pasando `buyerIdentity` explícito (email del formulario) y el `registration_id` como atributo de línea
+
+La función `handleRegistroSubmit` en el archivo ya implementa este flujo con validación de configuración:
 
 ```javascript
-// ─── Reemplazar la función handleRegistroSubmit completa ───────────────────
-async function handleRegistroSubmit(e) {
-  e.preventDefault();
-  const form = document.getElementById('form-registro');
-  const fd   = new FormData(form);
+// ─── Fragmento de handleRegistroSubmit (ver archivo completo en SHOPIFY/sections/main-redirect-registro.liquid) ───
+//
+// Dentro del bloque try{}, después de PASO 1 (llamar /api/registro y obtener registrationId):
+//
+// ── PASO 2: Crear carrito con Storefront API ──────────────────────────────────
+const storefrontToken = '{{ settings.shopify_storefront_token }}';
+const variantId       = '{{ settings.shopify_variant_basico }}';
+const sellingPlanId   = '{{ settings.shopify_selling_plan_basico }}';
+// ↑ Configurar en: Shopify Admin → Online Store → Themes → Customize → Theme settings
+//   Variant ID: Shopify Admin → Catálogo → Productos → [Plan Básico] → editar variante → URL
+//   Selling Plan ID: Shopify Admin → Aplicaciones → Subscriptions → tu plan
 
-  // Datos del migrante (del formulario — NO de la sesión Shopify)
-  const migrant = {
-    first_name: (fd.get('nombre') || '').trim(),
-    last_name:  (fd.get('apellido_paterno') || '').trim(),
-    email:      (fd.get('email') || '').trim(),
-    phone:      (fd.get('telefono') || '').trim(),
-    birthdate:  fd.get('fecha_nacimiento'),
-    plan:       fd.get('plan') || 'basico',
-  };
-
-  // Datos de la familia (primer beneficiario)
-  const family = {
-    first_name: (fd.get('ben1_nombre') || '').trim(),
-    last_name:  (fd.get('ben1_apellido') || '').trim(),
-    email:      (fd.get('ben1_email') || '').trim(),
-    phone:      (fd.get('ben1_telefono') || '').trim(),
-  };
-
-  const submitBtn = form.querySelector('button[type="submit"]');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Procesando...'; }
-
-  try {
-    // ── PASO 1: Crear registro en Supabase y obtener los códigos ────────────
-    const regRes = await fetch('https://www.saludcompartida.app/api/registro', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        migrant_first_name: migrant.first_name,
-        migrant_last_name:  migrant.last_name,
-        migrant_email:      migrant.email,
-        migrant_phone:      migrant.phone,
-        family_first_name:  family.first_name,
-        family_last_name:   family.last_name,
-        family_email:       family.email,
-        family_phone:       family.phone,
-        plan_type:          migrant.plan,
-      }),
-    });
-    const regData = await regRes.json();
-    if (!regData.success) throw new Error(regData.error || 'Error al crear registro');
-
-    const registrationId = regData.registrationId;
-
-    // ── PASO 2: Crear carrito con Storefront API ─────────────────────────────
-    // buyerIdentity asegura que el email del FORMULARIO se use en el checkout,
-    // independientemente de si hay una sesión Shopify activa.
-    const storefrontToken = '{{ settings.shopify_storefront_token }}';
-    const variantGid = `gid://shopify/ProductVariant/{{ settings.shopify_variant_basico | default: 42695875788877 }}`;
-    const sellingPlanGid = `gid://shopify/SellingPlan/{{ settings.shopify_selling_plan_basico | default: 7685865549 }}`;
-    // ↑ Encontrar estos IDs en: Shopify Admin → Catálogo → Productos → [Plan Básico]
-    //   El Variant ID está en la URL al editar la variante.
-    //   El Selling Plan ID está en: Aplicaciones → Subscriptions → tu plan.
-
-    const cartMutation = `
-      mutation cartCreate($input: CartInput!) {
-        cartCreate(input: $input) {
-          cart { id checkoutUrl }
-          userErrors { field message }
-        }
-      }
-    `;
-    const cartVariables = {
-      input: {
-        lines: [{
-          merchandiseId: variantGid,
-          quantity: 1,
-          sellingPlanId: sellingPlanGid,
-          attributes: [
-            { key: 'registration_id',  value: registrationId },
-            { key: 'Nombre migrante',  value: migrant.first_name + ' ' + migrant.last_name },
-            { key: 'Email migrante',   value: migrant.email },
-          ],
-        }],
-        buyerIdentity: {
-          email:       migrant.email,      // ← explícito del formulario
-          phone:       migrant.phone,
-          countryCode: 'US',
-          deliveryAddressPreferences: [],
-        },
-        note: `Migrante: ${migrant.first_name} ${migrant.last_name} | ` +
-              `Email: ${migrant.email} | ` +
-              `Familia: ${family.first_name} ${family.last_name} | ` +
-              `Plan: ${migrant.plan} | ` +
-              `registration_id: ${registrationId}`,
-      },
-    };
-
-    const cartRes = await fetch('/api/2024-10/graphql.json', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': storefrontToken,
-      },
-      body: JSON.stringify({ query: cartMutation, variables: cartVariables }),
-    });
-    const cartData = await cartRes.json();
-    const checkoutUrl = cartData?.data?.cartCreate?.cart?.checkoutUrl;
-    if (!checkoutUrl) {
-      const errMsg = cartData?.data?.cartCreate?.userErrors?.[0]?.message || 'Error al preparar el carrito';
-      throw new Error(errMsg);
-    }
-
-    // ── PASO 3: Redirigir al checkout de Shopify ─────────────────────────────
-    window.location.href = checkoutUrl;
-
-  } catch (err) {
-    console.error('Checkout error:', err);
-    const msg = err instanceof Error ? err.message : 'Ocurrió un error. Por favor intenta de nuevo.';
-    let errEl = document.getElementById('sc-checkout-error');
-    if (!errEl) {
-      errEl = document.createElement('p');
-      errEl.id = 'sc-checkout-error';
-      errEl.style.cssText = 'color:#f87171;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:8px;padding:12px 16px;margin-top:12px;font-size:14px;';
-      form.appendChild(errEl);
-    }
-    errEl.textContent = msg;
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Continuar al pago — Primer mes GRATIS'; }
-  }
+if (!storefrontToken || !variantId || !sellingPlanId) {
+  throw new Error('El formulario no está configurado correctamente. Contacta al administrador.');
 }
+
+const variantGid     = `gid://shopify/ProductVariant/${variantId}`;
+const sellingPlanGid = `gid://shopify/SellingPlan/${sellingPlanId}`;
 ```
 
-### También agregar en Theme Settings (`config/settings_schema.json`)
+### Agregar en Theme Settings (`config/settings_schema.json`)
+
+Copiar las entradas de `SHOPIFY/config/settings_schema_entries.json` dentro del array del último objeto `{ "name": "..." }` en `config/settings_schema.json`:
 
 ```json
 {
   "type": "text",
   "id": "shopify_storefront_token",
   "label": "Storefront API Access Token",
-  "info": "Encontrar en: Shopify Admin → Apps → Develop apps → tu app → API credentials → Storefront API access token"
+  "info": "Token público para crear carritos. Encontrar en: Shopify Admin → Apps → Develop apps → tu app → API credentials → Storefront API access token"
+},
+{
+  "type": "text",
+  "id": "shopify_variant_basico",
+  "label": "Variant ID — Plan Básico (solo el número)",
+  "info": "Encontrar en: Shopify Admin → Catálogo → Productos → [Plan Básico] → editar variante → el número al final de la URL. Ejemplo: 42695875788877"
+},
+{
+  "type": "text",
+  "id": "shopify_selling_plan_basico",
+  "label": "Selling Plan ID — Plan Básico (solo el número)",
+  "info": "Encontrar en: Shopify Admin → Aplicaciones → Subscriptions → tu plan de suscripción. Ejemplo: 7685865549"
 }
 ```
 
