@@ -160,16 +160,6 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 
 > Este es el paso más importante. Sin estas dos variables **nada funciona**.
 
-> 💡 **Atajo:** Si ya tienes el `NEXT_PUBLIC_SUPABASE_ANON_KEY`, puedes leer la URL del proyecto directamente del JWT sin entrar a Supabase:
-> el campo `ref` del payload es el ID del proyecto, y la URL es `https://<ref>.supabase.co`.
->
-> **Para este proyecto:**
-> ```
-> SUPABASE_URL_MAIN      = https://nuqwqshfaeygpstcfjnh.supabase.co
-> NEXT_PUBLIC_SUPABASE_URL = https://nuqwqshfaeygpstcfjnh.supabase.co
-> ```
-> Solo falta obtener la `service_role` key (paso 3 abajo).
-
 1. Entrar a [supabase.com](https://supabase.com) → seleccionar el proyecto **`mvp-saludcompartida`**
 2. En el menú izquierdo hacer click en **Project Settings** (ícono de engranaje ⚙️)
 3. Click en **Data API** (antes llamado "API")
@@ -177,8 +167,8 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 
 | Variable en Vercel | Dónde en Supabase | Valor para este proyecto |
 |---|---|---|
-| `SUPABASE_URL_MAIN` | **Project URL** | `https://nuqwqshfaeygpstcfjnh.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_URL` | mismo que arriba | `https://nuqwqshfaeygpstcfjnh.supabase.co` |
+| `SUPABASE_URL_MAIN` | **Custom Domains** (o Project URL si no hay dominio personalizado) | `https://api.saludcompartida.app` |
+| `NEXT_PUBLIC_SUPABASE_URL` | mismo que arriba | `https://api.saludcompartida.app` |
 | `SUPABASE_SERVICE_ROLE_KEY_MAIN` | "Project API keys" → fila **`service_role`** | `eyJ...` (copiar desde Supabase) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | "Project API keys" → fila **`anon`** | ✅ Ya configurado |
 
