@@ -160,20 +160,31 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 
 > Este es el paso más importante. Sin estas dos variables **nada funciona**.
 
+> 💡 **Atajo:** Si ya tienes el `NEXT_PUBLIC_SUPABASE_ANON_KEY`, puedes leer la URL del proyecto directamente del JWT sin entrar a Supabase:
+> el campo `ref` del payload es el ID del proyecto, y la URL es `https://<ref>.supabase.co`.
+>
+> **Para este proyecto:**
+> ```
+> SUPABASE_URL_MAIN      = https://nuqwqshfaeygpstcfjnh.supabase.co
+> NEXT_PUBLIC_SUPABASE_URL = https://nuqwqshfaeygpstcfjnh.supabase.co
+> ```
+> Solo falta obtener la `service_role` key (paso 3 abajo).
+
 1. Entrar a [supabase.com](https://supabase.com) → seleccionar el proyecto **`mvp-saludcompartida`**
 2. En el menú izquierdo hacer click en **Project Settings** (ícono de engranaje ⚙️)
 3. Click en **Data API** (antes llamado "API")
 4. Copiar los valores:
 
-| Lo que ves en Supabase | Variable en Vercel | Ejemplo de cómo luce |
+| Variable en Vercel | Dónde en Supabase | Valor para este proyecto |
 |---|---|---|
-| **Project URL** | `SUPABASE_URL_MAIN` | `https://abcdefghijklmnop.supabase.co` |
-| **`service_role` key** (sección "Project API keys" → fila `service_role`) | `SUPABASE_SERVICE_ROLE_KEY_MAIN` | `eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp...` (token largo) |
-| **`anon` key** (sección "Project API keys" → fila `anon`) | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp...` (token largo, diferente) |
+| `SUPABASE_URL_MAIN` | **Project URL** | `https://nuqwqshfaeygpstcfjnh.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_URL` | mismo que arriba | `https://nuqwqshfaeygpstcfjnh.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY_MAIN` | "Project API keys" → fila **`service_role`** | `eyJ...` (copiar desde Supabase) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | "Project API keys" → fila **`anon`** | ✅ Ya configurado |
 
-> ⚠️ **No confundir**: la `service_role` key y la `anon` key son diferentes tokens. La `service_role` ignora RLS (Row Level Security) — es la que necesita el servidor. La `anon` key es la pública.
-
-> ℹ️ El valor de `NEXT_PUBLIC_SUPABASE_URL` es exactamente igual que `SUPABASE_URL_MAIN`.
+> ⚠️ **No confundir**: la `service_role` key y la `anon` key son tokens **distintos**. La `service_role` ignora RLS — es la que necesita el servidor para leer y escribir datos. La `anon` key es pública.
+>
+> El campo `service_role` lo verás en la misma pantalla "Data API", justo debajo de la `anon` key. Tiene que decir `service_role` en la etiqueta.
 
 ---
 
