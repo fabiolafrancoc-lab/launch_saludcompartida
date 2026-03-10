@@ -12,8 +12,8 @@ const CORS = {
 }
 
 function getSupabase() {
-  const url = process.env.SUPABASE_URL_MAIN ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY_MAIN ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+  const url = process.env.SUPABASE_URL_MAIN ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY_MAIN ?? ''
   if (!url || !key) throw new Error('SUPABASE_URL_MAIN / SUPABASE_SERVICE_ROLE_KEY_MAIN no configurados')
   return createClient(url, key)
 }

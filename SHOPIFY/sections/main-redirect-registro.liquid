@@ -180,11 +180,21 @@ async function handleRegistroSubmit(e) {
             { key: 'Email migrante',   value: migrant.email },
           ],
         }],
+        attributes: [
+          { key: 'registration_id', value: registrationId },
+        ],
         buyerIdentity: {
           email:       migrant.email,      // ← explícito del formulario
           phone:       migrant.phone,
           countryCode: 'US',
-          deliveryAddressPreferences: [],
+          deliveryAddressPreferences: [{
+            deliveryAddress: {
+              firstName: migrant.first_name,
+              lastName:  migrant.last_name,
+              phone:     migrant.phone,
+              country:   'US',
+            },
+          }],
         },
         note: `Migrante: ${migrant.first_name} ${migrant.last_name} | ` +
               `Email: ${migrant.email} | ` +
