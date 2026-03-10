@@ -217,9 +217,9 @@ Para `RESEND_FROM_EMAIL`:
 
 Esta variable controla qué dominio puede llamar a `/api/registro` (CORS).
 
-- Si tu tienda es `mi-tienda.myshopify.com`, el valor es: `https://mi-tienda.myshopify.com`
-- Si tienes dominio personalizado como `tienda.saludcompartida.app`, el valor es: `https://tienda.saludcompartida.app`
-- Si no estás segura, puedes poner `*` temporalmente (permite cualquier origen)
+```
+SHOPIFY_STORE_ORIGIN=https://www.saludcompartida.shop
+```
 
 ---
 
