@@ -197,6 +197,11 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 
 ### §3 — Resend (emails): `RESEND_API_KEY` y `RESEND_FROM_EMAIL`
 
+> ✅ Si los emails con códigos de acceso ya se están enviando correctamente, **no hay que hacer nada aquí** — Resend ya está configurado.
+
+<details>
+<summary>Solo si hay que configurar Resend desde cero</summary>
+
 1. Entrar a [resend.com](https://resend.com) → hacer login (o crear cuenta gratis)
 2. En el menú izquierdo: **API Keys** → **Create API Key**
    - Nombre: `saludcompartida-production`
@@ -209,7 +214,8 @@ Para `RESEND_FROM_EMAIL`:
   1. En Resend: **Domains** → **Add Domain** → ingresar `saludcompartida.app`
   2. Resend te dará registros DNS (TXT/MX) que debes agregar en tu proveedor de dominio
   3. Una vez verificado, usar `noreply@saludcompartida.app`
-  - (Alternativa temporal para pruebas: Resend provee `onboarding@resend.dev` — funciona sin verificar dominio pero solo puede enviar a tu propio email)
+
+</details>
 
 ---
 
