@@ -98,11 +98,16 @@ export async function POST(req: NextRequest) {
 
   const registrationId = getOrderAttr(order, ['registration_id'])
   if (registrationId) {
-    const { data } = await supabase
+    const { data, error: lookupError } = await supabase
       .from('registrations')
       .select('*')
       .eq('id', registrationId)
       .maybeSingle()
+    if (lookupError) {
+      // DB error — return 500 so Shopify retries instead of giving up
+      console.error('[webhook/shopify] Supabase error looking up registration_id', registrationId, '-', lookupError.message)
+      return NextResponse.json({ ok: false, error: 'Database error' }, { status: 500 })
+    }
     registration = data
   }
 
@@ -111,13 +116,17 @@ export async function POST(req: NextRequest) {
   if (!registration) {
     const email = (order.email as string) || (order.customer as Record<string, string> | undefined)?.email || ''
     if (email) {
-      const { data } = await supabase
+      const { data, error: emailLookupError } = await supabase
         .from('registrations')
         .select('*')
         .or(`migrant_email.eq.${email},family_email.eq.${email}`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
+      if (emailLookupError) {
+        console.error('[webhook/shopify] Supabase error looking up by email', email, '-', emailLookupError.message)
+        return NextResponse.json({ ok: false, error: 'Database error' }, { status: 500 })
+      }
       registration = data
     }
   }
@@ -128,10 +137,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 3. Activate registration ─────────────────────────────────────────────
-  await supabase
+  const { error: updateError } = await supabase
     .from('registrations')
     .update({ status: 'active', payment_completed_at: new Date().toISOString() })
     .eq('id', registration.id)
+
+  if (updateError) {
+    // Return 500 so Shopify retries the webhook instead of silently skipping
+    console.error('[webhook/shopify] Failed to activate registration:', registration.id, '-', updateError.message)
+    return NextResponse.json(
+      { ok: false, error: `Failed to activate registration ${registration.id}: ${updateError.message}` },
+      { status: 500 }
+    )
+  }
 
   const migrantName =
     [registration.migrant_first_name, registration.migrant_last_name].filter(Boolean).join(' ').trim() ||

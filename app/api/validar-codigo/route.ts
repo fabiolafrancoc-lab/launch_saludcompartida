@@ -57,14 +57,28 @@ export async function POST(request: NextRequest) {
       }
 
       if (reg) {
-        // Account must be active (payment completed)
-        if (reg.status && reg.status !== 'active') {
+        // ── Status gate ────────────────────────────────────────────────────
+        // 'pending_payment' means the Shopify webhook sent the welcome email
+        // (and therefore the access code) but failed to flip status → 'active'
+        // (a previously-silent bug, now fixed in the webhook).  Rather than
+        // locking out a paying user, we activate the account on-the-fly here.
+        if (reg.status === 'pending_payment') {
+          const { error: activationError } = await mainClient
+            .from('registrations')
+            .update({ status: 'active', payment_completed_at: new Date().toISOString() })
+            .eq('id', reg.id)
+            .eq('status', 'pending_payment') // idempotent: only update if still pending
+          if (activationError) {
+            // Log but don't block the user — they paid, they should get in.
+            console.error('[/api/validar-codigo] Auto-activation failed for', reg.id, '-', activationError.message)
+          } else {
+            console.info('[/api/validar-codigo] Auto-activated pending registration', reg.id)
+          }
+        } else if (reg.status && reg.status !== 'active') {
+          // Explicitly inactive / cancelled account — reject.
           return NextResponse.json({
             success: false,
-            error:
-              reg.status === 'pending_payment'
-                ? 'Tu pago aún no se ha completado. Revisa tu correo para terminar el proceso.'
-                : 'Cuenta inactiva. Contacta soporte: contacto@saludcompartida.com',
+            error: 'Cuenta inactiva. Contacta soporte: contacto@saludcompartida.com',
           })
         }
 
