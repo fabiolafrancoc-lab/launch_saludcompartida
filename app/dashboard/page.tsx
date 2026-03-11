@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { VALIDATION_CACHE_KEY, VALIDATION_CACHE_TTL_MS } from '../lib/validation-cache'
 
 interface UserInfo {
   type: 'migrant' | 'family'
@@ -22,6 +23,28 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    // ── 1. Fast path: use validated data stored by the landing page ──────────
+    //    This avoids a second API call for the common case (user came from /).
+    try {
+      const stored = sessionStorage.getItem(VALIDATION_CACHE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as { code?: string; user?: UserInfo; ts?: number }
+        sessionStorage.removeItem(VALIDATION_CACHE_KEY)
+        if (
+          parsed.code &&
+          parsed.user &&
+          typeof parsed.ts === 'number' &&
+          Date.now() - parsed.ts < VALIDATION_CACHE_TTL_MS
+        ) {
+          setCode(parsed.code)
+          setUser(parsed.user)
+          setLoading(false)
+          return
+        }
+      }
+    } catch { /* sessionStorage unavailable (private mode / SSR guard) — fall through */ }
+
+    // ── 2. Slow path: re-validate via API (direct navigation / refresh) ──────
     const params = new URLSearchParams(window.location.search)
     const c = (params.get('code') ?? '').toUpperCase().trim()
     setCode(c)

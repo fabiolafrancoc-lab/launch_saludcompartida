@@ -128,10 +128,16 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 3. Activate registration ─────────────────────────────────────────────
-  await supabase
+  const { error: updateError } = await supabase
     .from('registrations')
     .update({ status: 'active', payment_completed_at: new Date().toISOString() })
     .eq('id', registration.id)
+
+  if (updateError) {
+    // Return 500 so Shopify retries the webhook instead of silently skipping
+    console.error('[webhook/shopify] Failed to activate registration:', registration.id, updateError.message)
+    return NextResponse.json({ ok: false, error: 'Failed to activate registration' }, { status: 500 })
+  }
 
   const migrantName =
     [registration.migrant_first_name, registration.migrant_last_name].filter(Boolean).join(' ').trim() ||

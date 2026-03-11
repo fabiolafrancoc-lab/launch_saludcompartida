@@ -1,5 +1,6 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { VALIDATION_CACHE_KEY } from './lib/validation-cache'
 
 /* ── Pain card (antes / ahora) ─────────────────────────────────────────────── */
 function PainCard({ icon, pain, fix, fixColor }: {
@@ -101,6 +102,7 @@ export default function LandingPage() {
   const [error, setError] = useState('')
   const [visible, setVisible] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const navigating = useRef(false)
 
   useEffect(() => { setTimeout(() => setVisible(true), 100) }, [])
 
@@ -118,6 +120,11 @@ export default function LandingPage() {
       })
       const data = await res.json()
       if (data.success && data.user) {
+        // Store validated result so the dashboard can skip the second API call
+        try {
+          sessionStorage.setItem(VALIDATION_CACHE_KEY, JSON.stringify({ code: trimmed, user: data.user, ts: Date.now() }))
+        } catch { /* sessionStorage might be unavailable (private mode) — ignore */ }
+        navigating.current = true
         window.location.href = `/dashboard?code=${trimmed}`
       } else {
         setError(data.error || 'Código no encontrado. Verifica e intenta de nuevo.')
@@ -125,7 +132,8 @@ export default function LandingPage() {
     } catch {
       setError('Error de conexión. Por favor intenta de nuevo.')
     } finally {
-      setLoading(false)
+      // Keep the spinner showing while navigating away; only reset on failure
+      if (!navigating.current) setLoading(false)
     }
   }
 
