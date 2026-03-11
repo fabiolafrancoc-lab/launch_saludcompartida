@@ -151,8 +151,7 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 | `RESEND_FROM_EMAIL` | Opcional | Ver §3 abajo |
 | `SUPABASE_URL_ALT` | Solo si hay órdenes antiguas | Ver §5 abajo |
 | `SUPABASE_SERVICE_ROLE_KEY_ALT` | Solo si hay órdenes antiguas | Ver §5 abajo |
-| `NEXT_PUBLIC_SUPABASE_URL` | ❌ No se usa | El código no la lee — no hace falta configurarla |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ❌ No se usa | El código no la lee — no hace falta configurarla |
+
 
 ---
 
@@ -168,9 +167,7 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 | Variable en Vercel | Dónde en Supabase | Valor para este proyecto |
 |---|---|---|
 | `SUPABASE_URL_MAIN` | **Custom Domains** (o Project URL si no hay dominio personalizado) | `https://api.saludcompartida.app` |
-| `NEXT_PUBLIC_SUPABASE_URL` | mismo que arriba | `https://api.saludcompartida.app` |
 | `SUPABASE_SERVICE_ROLE_KEY_MAIN` | "Project API keys" → fila **`service_role`** | `eyJ...` (copiar desde Supabase) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | "Project API keys" → fila **`anon`** | ✅ Ya configurado |
 
 > ⚠️ **No confundir**: la `service_role` key y la `anon` key son tokens **distintos**. La `service_role` ignora RLS — es la que necesita el servidor para leer y escribir datos. La `anon` key es pública.
 >
