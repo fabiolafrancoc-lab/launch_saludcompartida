@@ -151,8 +151,8 @@ Agrega cada variable de la tabla siguiente. Después de agregar todas, haz **Red
 | `RESEND_FROM_EMAIL` | Opcional | Ver §3 abajo |
 | `SUPABASE_URL_ALT` | Solo si hay órdenes antiguas | Ver §5 abajo |
 | `SUPABASE_SERVICE_ROLE_KEY_ALT` | Solo si hay órdenes antiguas | Ver §5 abajo |
-| `NEXT_PUBLIC_SUPABASE_URL` | Opcional | Mismo valor que `SUPABASE_URL_MAIN` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Opcional | Ver §1 abajo (anon key, NO service role) |
+| `NEXT_PUBLIC_SUPABASE_URL` | ❌ No se usa | El código no la lee — no hace falta configurarla |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ❌ No se usa | El código no la lee — no hace falta configurarla |
 
 ---
 
