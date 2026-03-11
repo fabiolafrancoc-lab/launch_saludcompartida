@@ -119,7 +119,9 @@ export default function LandingPage() {
         body: JSON.stringify({ code: trimmed }),
       })
       const data = await res.json()
-      if (data.success && data.user) {
+      if (data.success && data.user &&
+          (data.user.type === 'migrant' || data.user.type === 'family') &&
+          typeof data.user.userName === 'string') {
         // Store validated result so the dashboard can skip the second API call
         try {
           sessionStorage.setItem(VALIDATION_CACHE_KEY, JSON.stringify({ code: trimmed, user: data.user, ts: Date.now() }))

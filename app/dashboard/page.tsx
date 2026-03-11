@@ -10,6 +10,17 @@ interface UserInfo {
   planType?: string
 }
 
+/** Returns true only if obj has the shape required by UserInfo */
+function isValidUserInfo(obj: unknown): obj is UserInfo {
+  if (!obj || typeof obj !== 'object') return false
+  const u = obj as Record<string, unknown>
+  return (
+    (u.type === 'migrant' || u.type === 'family') &&
+    typeof u.userName === 'string' &&
+    u.userName.length > 0
+  )
+}
+
 const centeredPage: React.CSSProperties = {
   minHeight: '100vh',
   background: '#111827',
@@ -38,7 +49,7 @@ export default function DashboardPage() {
         sessionStorage.removeItem(VALIDATION_CACHE_KEY)
         if (
           parsed.code &&
-          parsed.user &&
+          isValidUserInfo(parsed.user) &&
           typeof parsed.ts === 'number' &&
           Date.now() - parsed.ts < VALIDATION_CACHE_TTL_MS
         ) {
