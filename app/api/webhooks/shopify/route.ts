@@ -135,8 +135,11 @@ export async function POST(req: NextRequest) {
 
   if (updateError) {
     // Return 500 so Shopify retries the webhook instead of silently skipping
-    console.error('[webhook/shopify] Failed to activate registration:', registration.id, updateError.message)
-    return NextResponse.json({ ok: false, error: 'Failed to activate registration' }, { status: 500 })
+    console.error('[webhook/shopify] Failed to activate registration:', registration.id, '-', updateError.message)
+    return NextResponse.json(
+      { ok: false, error: `Failed to activate registration ${registration.id}: ${updateError.message}` },
+      { status: 500 }
+    )
   }
 
   const migrantName =
