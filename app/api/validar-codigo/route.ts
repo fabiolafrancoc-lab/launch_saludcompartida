@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 export const runtime = 'nodejs'
 
 function getSupabaseMain() {
-  const url = process.env.SUPABASE_URL_MAIN ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY_MAIN ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+  const url = process.env.SUPABASE_URL_MAIN ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY_MAIN ?? ''
   if (!url || !key) return null
   return createClient(url, key)
 }
@@ -42,11 +42,19 @@ export async function POST(request: NextRequest) {
     // ── 1. Search in MAIN Supabase — table: registrations ───────────────────
     const mainClient = getSupabaseMain()
     if (mainClient) {
-      const { data: reg } = await mainClient
+      const { data: reg, error: regError } = await mainClient
         .from('registrations')
         .select('*')
         .or(`migrant_code.eq.${normalizedCode},family_code.eq.${normalizedCode}`)
         .maybeSingle()
+
+      if (regError) {
+        console.error('[/api/validar-codigo] Supabase error:', regError.message)
+        return NextResponse.json({
+          success: false,
+          error: 'Error de conexión con la base de datos. Por favor intenta de nuevo en unos momentos.',
+        })
+      }
 
       if (reg) {
         // Account must be active (payment completed)
@@ -80,15 +88,23 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 2. Search in ALT Supabase — table: shopify_orders (legacy) ───────────
-    const altClient = getSupabaseAlt() ?? mainClient
-    if (altClient) {
-      const { data: order } = await altClient
+    // ALT is optional: it only contains orders created before the /api/registro
+    // flow was introduced. A missing/failing ALT client is non-fatal — we just
+    // skip the legacy lookup and return "not found" if main also found nothing.
+    const altClient = getSupabaseAlt()
+    if (!altClient) {
+      console.info('[/api/validar-codigo] ALT Supabase not configured — skipping legacy shopify_orders lookup.')
+    } else {
+      const { data: order, error: orderError } = await altClient
         .from('shopify_orders')
         .select('*')
         .or(`mvp_migrant_code.eq.${normalizedCode},mvp_family_code.eq.${normalizedCode}`)
         .maybeSingle()
 
-      if (order) {
+      if (orderError) {
+        console.error('[/api/validar-codigo] ALT Supabase error:', orderError.message)
+        // Non-fatal: skip legacy lookup, fall through to "not found"
+      } else if (order) {
         if (order.financial_status && order.financial_status !== 'paid') {
           return NextResponse.json({
             success: false,
