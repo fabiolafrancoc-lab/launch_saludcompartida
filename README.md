@@ -125,11 +125,38 @@ AHORA (correcto):
 
 ---
 
+## Estado del validador de código
+
+> ✅ **Habilitado** — El validador de códigos está completamente implementado en el código.
+
+El endpoint `POST /api/validar-codigo` verifica cada código en dos fuentes:
+
+| Fuente | Base de datos | Tabla | Cuándo se usa |
+|---|---|---|---|
+| MAIN | `mvp-saludcompartida` (Supabase) | `registrations` | Todos los registros nuevos (desde el formulario) |
+| ALT (legacy) | `launch-saludcompartida` (Supabase) | `shopify_orders` | Órdenes anteriores al formulario actual |
+
+**Verificación que realiza:**
+1. Valida formato: exactamente 6 caracteres alfanuméricos
+2. Busca el código en MAIN (`migrant_code` o `family_code`)
+3. Comprueba el estado de la cuenta: bloquea `pending_payment` (pago no completado) y cualquier estado distinto de `active` (cuenta inactiva)
+4. Si no está en MAIN, busca en ALT (`mvp_migrant_code` o `mvp_family_code`)
+5. Devuelve nombre, email y tipo de usuario si el código es válido
+
+Para verificar que el servicio está activo y las credenciales están configuradas:
+```
+GET https://www.saludcompartida.app/api/validar-codigo
+→ { "enabled": true, "sources": { "main": true, "alt": false } }
+```
+
+---
+
 ## APIs en este repositorio
 
 | Endpoint | Método | Descripción |
 |---|---|---|
 | `/api/registro` | POST | Crea registro en Supabase + genera códigos. Llamado por el formulario Shopify. |
+| `/api/validar-codigo` | GET | Verifica si el servicio está activo y las credenciales de base de datos configuradas. |
 | `/api/validar-codigo` | POST | Valida un código de 6 caracteres. Busca en `registrations` (MAIN) y `shopify_orders` (ALT). |
 | `/api/webhooks/shopify` | POST | Recibe `orders/paid` de Shopify. Activa la cuenta y envía emails con códigos. |
 
